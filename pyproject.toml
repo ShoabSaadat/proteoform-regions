@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "proteoform-regions"
+version = "0.1.0"
+description = "Proteoform-aware region inference and detection-bias quantification from bottom-up proteomics peptide tables"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Shoaib Saadat" },
+]
+keywords = [
+    "proteomics", "proteoform", "peptide", "bottom-up", "isoelectric point",
+    "detected region", "detection bias", "precursor masking", "mass spectrometry",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Typing :: Typed",
+]
+# Paper-validated versions (yinyan freeze 2026-09-17): biopython 1.88,
+# pyteomics 5.0.1, numpy 2.4.6, pandas 3.0.5, scipy 1.17.1 (python 3.11.2).
+# Ranges below admit those exact versions; uv.lock pins the tested set.
+dependencies = [
+    "pandas>=2.2,<4",
+    "numpy>=1.26,<3",
+    "scipy>=1.11,<2",
+    "biopython>=1.83,<2",
+    "pyteomics>=5.0,<7",
+    "lxml>=4.9,<7",
+    "requests>=2.31,<3",
+]
+
+[project.optional-dependencies]
+io = ["openpyxl>=3.1"]          # xlsx PSM tables (e.g. FragPipe exports)
+plots = ["matplotlib>=3.8"]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/ShoabSaadat/proteoform-regions"
+Documentation = "https://shoabsaadat.github.io/proteoform-regions"
+Repository = "https://github.com/ShoabSaadat/proteoform-regions"
+Changelog = "https://github.com/ShoabSaadat/proteoform-regions/blob/main/CHANGELOG.md"
+
+[project.scripts]
+proteoform-regions = "proteoform_regions.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/proteoform_regions"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "docs", "examples", "CHANGELOG.md", "LICENSE", "README.md"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
+ignore = [
+    "SIM108",  # ternary rewrites hurt the verbatim-first extraction style
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "network: tests that require internet access (deselected in CI by default)",
+    "parity: tests against frozen paper-repo outputs (read-only fixtures)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:pyteomics",
+]
+
+[tool.coverage.run]
+source = ["src/proteoform_regions"]

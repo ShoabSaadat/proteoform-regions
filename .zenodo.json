@@ -1,0 +1,22 @@
+{
+  "title": "proteoform-regions: proteoform-aware region inference and detection-bias quantification from bottom-up proteomics",
+  "description": "Software implementation of the pipeline from 'Basic-peptide depletion and precursor masking in bottom-up proteomics' (Saadat et al., 2026). Harmonizes heterogeneous peptide-level result tables (MaxQuant, DIA-NN, Spectronaut, Progenesis, mzIdentML, glycopeptide exports, FragPipe PSMs) into a tiered evidence schema; computes peptide/region pI and molecular weight; stitches detected regions; and quantifies acidic/basic detection bias against digestion-matched tryptic backgrounds.",
+  "creators": [
+    {
+      "name": "Saadat, Shoaib",
+      "affiliation": "Independent"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "proteomics",
+    "proteoform",
+    "bottom-up",
+    "isoelectric point",
+    "detection bias",
+    "precursor masking",
+    "mass spectrometry"
+  ],
+  "access_right": "open",
+  "upload_type": "software"
+}

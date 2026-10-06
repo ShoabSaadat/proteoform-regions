@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below, along with the
+  source publication.
+type: software
+title: proteoform-regions
+authors:
+  - family-names: Saadat
+    given-names: Shoaib
+identifiers:
+  - type: url
+    value: "https://github.com/ShoabSaadat/proteoform-regions"
+repository-code: "https://github.com/ShoabSaadat/proteoform-regions"
+abstract: >-
+  Proteoform-aware region inference and detection-bias quantification from
+  bottom-up proteomics peptide tables. Harmonizes heterogeneous search-engine
+  peptide tables into a tiered evidence schema, computes pI/MW physicochemistry,
+  stitches detected regions, and quantifies acidic/basic detection bias against
+  digestion-matched tryptic backgrounds.
+keywords:
+  - proteomics
+  - proteoform
+  - bottom-up
+  - isoelectric point
+  - detection bias
+license: MIT
