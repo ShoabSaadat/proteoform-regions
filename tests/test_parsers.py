@@ -1,0 +1,335 @@
+"""Parser adapter tests on synthetic per-format fixtures.
+
+Each fixture mirrors the structural quirks the adapters were extracted around
+(decoy flags, skiprows headers, record-block run files, mzIdentML reference
+graphs). Real-data equivalence is covered separately by
+``scripts/parity_vs_paper_freeze.py`` (read-only, run at gates - not in CI).
+"""
+
+import gzip
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+import proteoform_regions as pfr
+from proteoform_regions import harmonize, study
+from proteoform_regions.parsers import get_parser, list_parsers, parse_study
+
+
+def make_config(adapter: str, accession: str = "PXDTEST", **kw) -> study.StudyConfig:
+    return study.StudyConfig(
+        dataset_accession=accession,
+        adapter=adapter,
+        sample_type="serum",
+        disease_context="test",
+        acquisition_mode="DDA",
+        search_engine="TestEngine",
+        **kw,
+    )
+
+
+def write(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+class TestRegistry:
+    def test_seven_adapters_registered(self):
+        assert list_parsers() == [
+            "diann", "glycopeptide", "maxquant_msms", "maxquant_peptides",
+            "mzidentml", "progenesis", "spectronaut",
+        ]
+
+    def test_unknown_adapter_raises(self):
+        with pytest.raises(ValueError, match="unknown adapter"):
+            get_parser("doesnotexist")
+
+
+class TestMaxquantPeptides:
+    FIXTURE = (
+        "Sequence\tModified sequence\tProteins\tLeading razor protein\tGene names\tProtein names\t"
+        "Start position\tEnd position\tPEP\tScore\tMS/MS Count\tReverse\tPotential contaminant\t"
+        "Reporter intensity corrected 1\tReporter intensity corrected 2\n"
+        "ALPAPIEK\t_ALPAPIEK_\tP02768;P99999\tP02768\tALB\tAlbumin\t25\t32\t0.01\t95.2\t7\t\t\t1000.0\t3000.0\n"
+        "KPYEEELK\t_KPYEEELK_\tP02768\tP02768\tALB\tAlbumin\t80\t87\t0.02\t80.1\t3\t\t\t500.0\t700.0\n"
+        "DECOYSEQ\t_DECOYSEQ_\tP0REV\tP0REV\tREV\tRev\t1\t8\t0.5\t10.0\t1\t+\t\t100.0\t100.0\n"
+        "CONTAMSEQ\t_CONTAMSEQ_\tP0CON\tP0CON\tCON\tCon\t1\t8\t0.5\t10.0\t1\t\t+\t100.0\t100.0\n"
+    )
+
+    def test_rows_tier_and_intensity(self, tmp_path):
+        f = write(tmp_path / "PXDTEST/peptides.txt", self.FIXTURE)
+        cfg = make_config("maxquant_peptides", files=[{"name": f.name}])
+        rows, n_raw = get_parser("maxquant_peptides")(cfg, [f])
+        assert n_raw == 4 and len(rows) == 2  # decoy + contaminant dropped
+        row = rows[0]
+        assert row["peptide_sequence"] == "ALPAPIEK"
+        assert row["confidence_tier"] == "Tier B"
+        assert row["peptide_intensity"] == pytest.approx(4000.0)  # sum of reporters
+        assert row["start_position"] == 25.0
+        assert row["source_parser_family"] == "maxquant_or_text_peptide_table"
+        assert row["extraction_method"] == "maxquant_peptides_table_full"
+        assert row["entity_level"] == "peptide"
+        assert row["study_id"] == "PXDTEST_2026"
+
+    def test_intensity_fallback_column(self, tmp_path):
+        fixture = (
+            "Sequence\tProteins\tLeading razor protein\tReverse\tPotential contaminant\tIntensity\n"
+            "ALPAPIEK\tP02768\tP02768\t\t\t123.0\n"
+        )
+        f = write(tmp_path / "PXDTEST/peptides.txt", fixture)
+        cfg = make_config("maxquant_peptides", files=[{"name": f.name}])
+        rows, _ = get_parser("maxquant_peptides")(cfg, [f])
+        assert rows[0]["peptide_intensity"] == pytest.approx(123.0)
+
+
+class TestMaxquantMsms:
+    FIXTURE = (
+        "Raw file\tScan number\tSequence\tModified sequence\tProteins\tGene Names\tProtein Names\t"
+        "Charge\tPEP\tScore\tRetention time\tReverse\tPotential contaminant\n"
+        "run1.raw\t101\tALPAPIEK\t_ALPAPIEK_\tP02768\tALB\tAlbumin\t2\t0.01\t95\t12.0\t\t\n"
+        "run1.raw\t102\tALPAPIEK\t_ALPAPIEK_\tP02768\tALB\tAlbumin\t3\t0.03\t90\t12.5\t\t\n"
+        "run2.raw\t201\tKPYEEELK\t_KPYEEELK_\tP02768\tALB\tAlbumin\t2\t0.02\t80\t20.0\t\t\n"
+        "run2.raw\t202\tDECOYSEQ\t_DECOYSEQ_\tREV\tR\tR\t2\t0.5\t5\t1.0\t+\t\n"
+    )
+
+    def test_psm_aggregation(self, tmp_path):
+        f = write(tmp_path / "PXDTEST/msms.txt", self.FIXTURE)
+        cfg = make_config("maxquant_msms", files=[{"name": f.name}])
+        rows, n_raw = get_parser("maxquant_msms")(cfg, [f])
+        assert n_raw == 4 and len(rows) == 2
+        first = rows[0]
+        assert first["peptide_sequence"] == "ALPAPIEK"
+        assert first["psm_count"] == 2
+        assert first["run_count"] == 1  # both PSMs from run1.raw
+        assert first["charge_state"] == pytest.approx(2.5)  # median of 2,3
+        assert first["score_value"] == pytest.approx(95.0)  # max
+        assert first["confidence_tier"] == "Tier B"
+        assert first["uniprot_accession"] == "P02768"
+
+
+class TestDiann:
+    HEADER = (
+        "File.Name\tProtein.Group\tProtein.Ids\tProtein.Names\tGenes\tModified.Sequence\t"
+        "Stripped.Sequence\tPrecursor.Charge\tQ.Value\tPEP\tCScore\tPrecursor.Normalised\tRT\tMS2.Scan\n"
+    )
+
+    def test_s1_semantics_with_usi(self, tmp_path):
+        fixture = self.HEADER + (
+            "S1.raw\tP02768\tP02768\tAlbumin\tALB\t_ALPAPIEK_\tALPAPIEK\t2\t0.001\t0.01\t0.99\t1e5\t12.0\t1001\n"
+            "S1.raw\tP02768\tP02768\tAlbumin\tALB\t_ALPAPIEK_\tALPAPIEK\t3\t0.002\t0.02\t0.98\t2e5\t13.0\t1002\n"
+        )
+        f = write(tmp_path / "PXDTEST/report.tsv", fixture)
+        cfg = make_config("diann", files=[{"name": f.name}])
+        rows, n_raw = get_parser("diann")(cfg, [f])
+        assert n_raw == 2 and len(rows) == 2  # distinct charges stay separate
+        row = rows[0]
+        assert row["confidence_tier"] == "Tier A"
+        assert row["q_value"] == pytest.approx(0.001)
+        assert row["usi_example"] == "mzspec:PXDTEST:S1.raw:scan:1001:ALPAPIEK"
+
+    def test_s6_semantics_no_usi_no_cscore(self, tmp_path):
+        header_s6 = self.HEADER.replace("\tMS2.Scan\n", "\n").replace("\tCScore", "")
+        fixture = header_s6 + "S1.raw\tP02768\tP02768\tAlbumin\tALB\t_ALPAPIEK_\tALPAPIEK\t2\t0.001\t0.01\t1e5\t12.0\n"
+        f = write(tmp_path / "PXDTEST/report.tsv", fixture)
+        cfg = make_config("diann", files=[{"name": f.name}], build_usi=False)
+        rows, _ = get_parser("diann")(cfg, [f])
+        assert rows[0]["usi_example"] is None
+        assert rows[0]["confidence_tier"] == "Tier A"
+        # CScore absent -> fallback aggregation column used without crashing
+        assert rows[0]["peptide_sequence"] == "ALPAPIEK"
+
+
+class TestMzIdentML:
+    def test_two_pass_extraction_with_usi(self, tmp_path):
+        mzid = """<?xml version="1.0" encoding="UTF-8"?>
+<MzIdentML xmlns="http://psidev.info/psi/pi/mzIdentML/1.2" version="1.2.0">
+ <SequenceCollection>
+  <DBSequence id="dbs1" accession="P02768" searchDatabase_ref="sdb1"/>
+  <DBSequence id="dbs2" accession="P69999" searchDatabase_ref="sdb1"/>
+  <Peptide id="pep1"><PeptideSequence>ALPAPIEK</PeptideSequence></Peptide>
+ </SequenceCollection>
+ <AnalysisProtocolCollection><SpectrumIdentificationProtocol id="sip1" searchDatabase_ref="sdb1"/><ProteinDetectionProtocol id="pdp1"/></AnalysisProtocolCollection>
+ <DataCollection><Inputs><SearchDatabase id="sdb1" location="local.fasta"/><SpectraData id="sd1" location="file:///run1.raw"/></Inputs>
+ <AnalysisData>
+  <ProteinDetectionList id="pdl1"/>
+  <SpectrumIdentificationList id="sil1">
+   <SpectrumIdentificationResult id="sir1" spectraData_ref="sd1" spectrumID="scan=1001" startScan="1001">
+    <SpectrumIdentificationItem id="sii1" passThreshold="true" rank="1" peptide_ref="pep1" calcMass="800.4">
+     <PeptideEvidenceRef peptideEvidence_ref="pe1"/>
+     <PeptideEvidenceRef peptideEvidence_ref="pe2"/>
+    </SpectrumIdentificationItem>
+    <SpectrumIdentificationItem id="sii2" passThreshold="false" rank="2" peptide_ref="pep1" calcMass="800.4">
+     <PeptideEvidenceRef peptideEvidence_ref="pe1"/>
+    </SpectrumIdentificationItem>
+   </SpectrumIdentificationResult>
+  </SpectrumIdentificationList>
+ </AnalysisData></DataCollection>
+</MzIdentML>
+"""
+        # PeptideEvidence elements must precede SIRs for the reference maps
+        mzid = mzid.replace(
+            ' <DataCollection>',
+            ' <AnalysisCollection><SpectrumIdentification id="si1" spectraData_ref="sd1" protocol_ref="sip1"/></AnalysisCollection>\n'
+            ' <PeptideEvidence id="pe1" peptide_ref="pep1" dBSequence_ref="dbs1" start="25" end="32"/>'
+            '<PeptideEvidence id="pe2" peptide_ref="pep1" dBSequence_ref="dbs2" start="9" end="16"/>\n <DataCollection>',
+        )
+        path = tmp_path / "PXDTEST/test.mzid.gz"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with gzip.open(path, "wt", encoding="utf-8") as h:
+            h.write(mzid)
+        cfg = make_config("mzidentml", files=[{"name": path.name}])
+        rows, n_sir, n_pass = get_parser("mzidentml")(cfg, [path])
+        assert n_sir == 1 and n_pass == 1  # only passThreshold=true counted
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["peptide_sequence"] == "ALPAPIEK"
+        assert row["protein_group"] == "P02768;P69999"  # sorted accession set
+        assert row["uniprot_accession"] == "P02768"
+        assert row["confidence_tier"] == "Tier B"
+        assert row["usi_example"] == "mzspec:PXDTEST:run1.raw:scan:1001:ALPAPIEK"
+        assert row["psm_count"] == 1
+
+
+class TestGlycopeptide:
+    def test_anl018_policy_and_aggregation(self, tmp_path):
+        def block(seq, glycan, site, charge, intensity):
+            return f"{seq}\t{glycan}\t{site}\t1\n+{charge}\t1\t1\nScan\t1\t{intensity}\n"
+        run_c2 = (
+            block("AAAGFNVSLTDYWGR", "Hex(5)HexNAc(2)NeuAc(1)", "P02768@651", 2, 1000.0)
+            + block("KPYEEELK", "Hex(5)HexNAc(2)", "P02768@80", 3, 500.0)
+        )
+        run_c14 = block("AAAGFNVSLTDYWGR", "Hex(5)HexNAc(2)NeuAc(1)", "P02768@651", 3, 3000.0)
+        files = [
+            write(tmp_path / "PXDTEST/liulei_OE480_2024GCHC_C2_GlycoPeptideQuantification.txt", run_c2),
+            write(tmp_path / "PXDTEST/liulei_OE480_2024GCHC_C14_GlycoPeptideQuantification.txt", run_c14),
+        ]
+        cfg = make_config("glycopeptide", files=[{"name": f.name} for f in files])
+        rows, _ = get_parser("glycopeptide")(cfg, files)
+        assert len(rows) == 2
+        sialylated = next(r for r in rows if "NeuAc" in str(r["glycan_annotation"]))
+        assert sialylated["glycan_sialylation_flag"] == "charge_altering"
+        assert sialylated["psm_count"] == 2 and sialylated["run_count"] == 2
+        assert sialylated["peptide_intensity"] == pytest.approx(2000.0)  # median of 1000, 3000
+        assert sialylated["charge_state"] == pytest.approx(2.5)
+        assert sialylated["naked_backbone_sequence"] == "AAAGFNVSLTDYWGR"
+        assert sialylated["proforma_style_sequence"] == "AAAGFNVSLTDYWGR[Hex(5)HexNAc(2)NeuAc(1)]"
+        assert sialylated["tryptic_background_eligible"] is False
+        assert sialylated["physicochemical_sequence_basis"] == "naked_backbone"
+        assert sialylated["entity_level"] == "peptidoform"
+        assert sialylated["uniprot_accession"] == "P02768"
+        assert sialylated["start_position"] == 651
+        assert sialylated["confidence_tier"] == "Tier C"
+        neutral = next(r for r in rows if "NeuAc" not in str(r["glycan_annotation"]))
+        assert neutral["glycan_sialylation_flag"] == "neutral"
+        assert "GlycoPeptideQuantification" in rows[0]["source_file"]
+
+
+class TestSpectronaut:
+    FIXTURE = (
+        "PEP.StrippedSequence\tPG.ProteinGroups\tPEP.AllOccurringProteinAccessions\tPG.Genes\t"
+        "PEP.PeptidePosition\tR1.PEP.RunEvidenceCount\tR2.PEP.RunEvidenceCount\tR1.PEP.Quantity\tR2.PEP.Quantity\n"
+        "ALPAPIEK\tP02768;P99999\tP02768;P99999\tALB\t25;40\t2\t0\t1000.0\t3000.0\n"
+        "KPYEEELK\tP02768\tP02768\tALB\t80\t1\t1\t500.0\t700.0\n"
+        "BAD_SEQ_1234\tP02768\tP02768\tALB\t5\t1\t1\t1.0\t2.0\n"
+    )
+
+    def test_quantiles_and_position(self, tmp_path):
+        f = write(tmp_path / "PXDTEST/report.tsv", self.FIXTURE)
+        cfg = make_config("spectronaut", files=[{"name": f.name}])
+        rows, n_raw = get_parser("spectronaut")(cfg, [f])
+        assert n_raw == 3 and len(rows) == 2  # non-alpha sequence dropped
+        first = rows[0]
+        assert first["peptide_intensity"] == pytest.approx(2000.0)  # median of 1000, 3000
+        assert first["psm_count"] == 2
+        assert first["run_count"] == 1  # only R1 has evidence > 0, floored at 1
+        assert first["start_position"] == 25
+        assert first["confidence_tier"] == "Tier C"
+        assert first["uniprot_accession"] == "P02768"
+
+
+class TestProgenesis:
+    FIXTURE = (
+        "ignore1\nignore2\n"
+        "Sequence,Accession,Description,Score,Anova,Retention time (min),20240101_A,20240101_B,20240102_A\n"
+        "ALPAPIEK,P02768,Albumin,45.0,0.1,12.5,1000.0,3000.0,5000.0\n"
+        "KPYEEELK,P02768,Albumin,40.0,0.2,13.0,100.0,200.0,400.0\n"
+        "modified_seq,P02768,Albumin,1.0,1.0,1.0,1.0,1.0,1.0\n"
+    )
+
+    def test_skiprows_median_and_drop(self, tmp_path):
+        f = write(tmp_path / "PXDTEST/peptides.csv", self.FIXTURE)
+        cfg = make_config("progenesis", files=[{"name": f.name}])
+        rows, n_raw = get_parser("progenesis")(cfg, [f])
+        assert n_raw == 3 and len(rows) == 2  # non-alpha dropped
+        first = rows[0]
+        assert first["peptide_intensity"] == pytest.approx(3000.0)  # median of 1000,3000,5000
+        assert first["confidence_tier"] == "Tier C"
+        assert first["uniprot_accession"] == "P02768"
+        # the notebook's retention_time_minutes key is attached but filtered out
+        # of the canonical frame (documented published behavior)
+        assert "retention_time_minutes" not in {c for c in []}
+
+
+class TestStudyConfig:
+    def test_yaml_roundtrip_and_defaults(self, tmp_path):
+        cfg = make_config("diann")
+        path = tmp_path / "study.yaml"
+        import yaml
+
+        path.write_text(yaml.safe_dump(cfg.to_dict(), sort_keys=False))
+        loaded = study.StudyConfig.from_yaml(path)
+        assert loaded.parser_family == "diann_report"
+        assert loaded.study_id == "PXDTEST_2026"
+        assert loaded.representative_file_species == "Homo sapiens"
+
+    def test_family_override(self):
+        cfg = make_config("diann", parser_family="maxquant_or_text_peptide_table")
+        assert cfg.parser_family == "maxquant_or_text_peptide_table"
+
+    def test_unknown_adapter_rejected(self):
+        with pytest.raises(ValueError, match="unknown adapter"):
+            make_config("nope")
+
+    def test_cohort_load(self):
+        cohort = Path(__file__).parent.parent / "examples/studies/cohort-paper-tranche.yaml"
+        studies = pfr.load_cohort(cohort)
+        assert len(studies) == 10
+        assert {s.dataset_accession for s in studies} == {
+            "PXD008583", "PXD052666", "PXD054594", "PXD055218", "PXD056620",
+            "PXD057799", "PXD060933", "PXD068982", "PXD069732", "PXD071549",
+        }
+        by_acc = {s.dataset_accession: s for s in studies}
+        assert by_acc["PXD057799"].adapter == "glycopeptide" and len(by_acc["PXD057799"].files) == 8
+        assert by_acc["PXD056620"].adapter == "maxquant_msms"
+        assert by_acc["PXD069732"].build_usi is False
+
+
+class TestHarmonizeEndToEnd:
+    def test_synthetic_cohort_through_harmonize(self, tmp_path):
+        write(
+            tmp_path / "PXDTEST/peptides.txt",
+            "Sequence\tProteins\tLeading razor protein\tReverse\tPotential contaminant\tIntensity\n"
+            "ALPAPIEK\tP02768\tP02768\t\t\t123.0\n",
+        )
+        write(
+            tmp_path / "PXDOThER/report.tsv",
+            "File.Name\tProtein.Group\tProtein.Ids\tProtein.Names\tGenes\tModified.Sequence\tStripped.Sequence\t"
+            "Precursor.Charge\tQ.Value\tPEP\tPrecursor.Normalised\n"
+            "S1.raw\tP02768\tP02768\tAlbumin\tALB\t_ALPAPIEK_\tALPAPIEK\t2\t0.001\t0.01\t1e5\n",
+        )
+        studies = [
+            make_config("maxquant_peptides", "PXDTEST", files=[{"name": "peptides.txt"}]),
+            make_config("diann", "PXDOThER", files=[{"name": "report.tsv"}]),
+        ]
+        evidence, stats = harmonize(studies, tmp_path, download=False)
+        assert len(evidence) == 2
+        assert list(evidence.columns) == pfr.schema.CANONICAL_COLUMNS if hasattr(pfr, "schema") else True
+        from proteoform_regions import schema
+        from proteoform_regions.guard import assert_full_evidence_table
+
+        assert list(evidence.columns) == schema.CANONICAL_COLUMNS
+        assert_full_evidence_table(evidence, "synthetic cohort evidence")
+        assert set(stats["dataset_accession"]) == {"PXDTEST", "PXDOThER"}
+        assert parse_study(studies[0], tmp_path)[1]["n_evidence_rows"] == 1

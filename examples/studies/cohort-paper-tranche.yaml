@@ -1,0 +1,130 @@
+cohort: Source publication tranche (k=10, frozen 2026-09-17)
+studies:
+- dataset_accession: PXD060933
+  adapter: maxquant_peptides
+  sample_type: tissue_ffpe_and_plasma_sev
+  disease_context: stage II colorectal cancer with vs without recurrence
+  assay_type: LC-MS/MS (TMT)
+  acquisition_mode: DDA + FAIMS
+  search_engine: MaxQuant
+  representative_file_arm: FFPE tissue arm (peptides_Tissue.txt)
+  files:
+  - name: peptides_Tissue.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2026/05/PXD060933/peptides_Tissue.txt
+- dataset_accession: PXD056620
+  adapter: maxquant_msms
+  sample_type: tissue_intervertebral_disc_ffpe
+  disease_context: degenerative intervertebral disc disease / chronic low back pain (elective surgery)
+  assay_type: LC-MS/MS
+  acquisition_mode: DDA
+  search_engine: MaxQuant
+  representative_file_arm: deparaffinised IVD tissue sections (SDS/urea lysis, S-Trap digest, DDA)
+  files:
+  - name: msms.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/02/PXD056620/msms.txt
+- dataset_accession: PXD055218
+  adapter: diann
+  sample_type: serum
+  disease_context: colorectal cancer vs non-CRC bowel disease vs healthy controls
+  assay_type: LC-MS/MS
+  acquisition_mode: DIA
+  search_engine: DIA-NN
+  representative_file_arm: serum DIA-MS screen (CP vs CN vs HC)
+  files:
+  - name: DIA-NN_report.tsv
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/06/PXD055218/DIA-NN_report.tsv
+  parser_family: maxquant_or_text_peptide_table
+- dataset_accession: PXD054594
+  adapter: mzidentml
+  sample_type: serum
+  disease_context: advanced solid tumours (phase I oncolytic adenovirus TILT-123, trial TUNIMO)
+  assay_type: LC-MS/MS
+  acquisition_mode: DIA (UDMSE)
+  search_engine: Byonic/UDMSE (per mzIdentML metadata)
+  representative_file_arm: patient serum PROTEOMICS subproject
+  files:
+  - name: TILT_PROTEOMICS_2024.mzid.gz
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2026/02/PXD054594/TILT_PROTEOMICS_2024.mzid.gz
+- dataset_accession: PXD057799
+  adapter: glycopeptide
+  sample_type: serum
+  disease_context: gastric cancer vs healthy controls (site-specific glycopeptide ratios)
+  assay_type: LC-MS/MS
+  acquisition_mode: DDA (HCD stepped NCE)
+  search_engine: pGlyco3 + GlyPep-Quant
+  representative_file_arm: human GC serum clinical arm (per-run GlyPep-Quant outputs; S1 decision D1 switch)
+  files:
+  - name: liulei_OE480_2024GCHC_C2_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_C2_GlycoPeptideQuantification.txt
+  - name: liulei_OE480_2024GCHC_C14_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_C14_GlycoPeptideQuantification.txt
+  - name: liulei_OE480_2024GCHC_C3_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_C3_GlycoPeptideQuantification.txt
+  - name: liulei_OE480_2024GCHC_T1-9_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_T1-9_GlycoPeptideQuantification.txt
+  - name: liulei_OE480_2024GCHC_T2-5_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_T2-5_GlycoPeptideQuantification.txt
+  - name: liulei_OE480_2024GCHC_T2-6_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_T2-6_GlycoPeptideQuantification.txt
+  - name: liulei_OE480_2024GCHC_T3-7_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_T3-7_GlycoPeptideQuantification.txt
+  - name: liulei_OE480_2024GCHC_T3-9_GlycoPeptideQuantification.txt
+    url: https://ftp.pride.ebi.ac.uk/pride/data/archive/2025/07/PXD057799/liulei_OE480_2024GCHC_T3-9_GlycoPeptideQuantification.txt
+- dataset_accession: PXD071549
+  adapter: spectronaut
+  sample_type: serum (and plasma arms; facility peptide report)
+  disease_context: cystic fibrosis (CFTR modulator ELX/TEZ/IVA treatment)
+  assay_type: LC-MS/MS
+  acquisition_mode: DIA (library-based, Spectronaut)
+  search_engine: Spectronaut
+  representative_file_arm: primary result file
+  files:
+  - name: 231014_Orkambi_Serum_DDALib_Spec18_Report_FacilityPeptideQuant16.tsv
+    url: null
+- dataset_accession: PXD068982
+  adapter: maxquant_peptides
+  sample_type: plasma
+  disease_context: ovarian cancer biomarker discovery
+  assay_type: LC-MS/MS
+  acquisition_mode: DDA
+  search_engine: MaxQuant
+  representative_file_arm: primary result file
+  files:
+  - name: peptides.txt
+    url: null
+  extract_protein_names: false
+- dataset_accession: PXD008583
+  adapter: progenesis
+  sample_type: serum (TOP12-depleted)
+  disease_context: colorectal cancer survival/CRP stratification
+  assay_type: LC-MS/MS
+  acquisition_mode: DDA (Progenesis QI)
+  search_engine: Progenesis QI + Mascot
+  representative_file_arm: primary result file
+  files:
+  - name: peptides.csv
+    url: null
+- dataset_accession: PXD052666
+  adapter: maxquant_peptides
+  sample_type: csf_extracellular_vesicles
+  disease_context: deep CSF proteome workflow optimization (non-disease cohort)
+  assay_type: LC-MS/MS
+  acquisition_mode: DDA
+  search_engine: MaxQuant
+  representative_file_arm: primary result file
+  files:
+  - name: 12m_R_DDA_peptides.txt
+    url: null
+  extract_protein_names: false
+- dataset_accession: PXD069732
+  adapter: diann
+  sample_type: serum (Proteograph nanoparticle-enriched)
+  disease_context: long-duration spaceflight serological biomarkers
+  assay_type: LC-MS/MS
+  acquisition_mode: DIA (Proteograph XT + DIA-NN)
+  search_engine: DIA-NN
+  representative_file_arm: primary result file
+  files:
+  - name: report.tsv
+    url: null
+  build_usi: false

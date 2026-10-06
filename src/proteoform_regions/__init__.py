@@ -21,4 +21,17 @@ This package is the software implementation of the pipeline described in
 
 __version__ = "0.1.0"
 
-__all__ = ["__version__"]
+__all__ = [
+    "__version__",
+    "StudyConfig",
+    "FileSpec",
+    "load_cohort",
+    "harmonize",
+    "ensure_downloads",
+    "parse_study",
+    "list_parsers",
+]
+
+from .study import FileSpec, StudyConfig, load_cohort  # noqa: E402
+from .harmonize import ensure_downloads, harmonize  # noqa: E402
+from .parsers import list_parsers, parse_study  # noqa: E402
