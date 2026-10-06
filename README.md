@@ -30,12 +30,12 @@ pip install "proteoform-regions[plots]"   # + plotting helpers
 import proteoform_regions as pfr
 
 study = pfr.StudyConfig.from_yaml("study.yaml")
-evidence = pfr.harmonize(study)                    # -> tiered evidence table + sha256 manifest
+evidence = pfr.harmonize(study)  # -> tiered evidence table + sha256 manifest
 protein_map, proteins = pfr.map_to_uniprot(evidence)
 features = pfr.compute_features(evidence, protein_map, calculator="bjellqvist")
 background = pfr.build_background(protein_map)
 regions = pfr.stitch_regions(features, gap=25)
-bias = pfr.quantify_bias(features, background)     # RQ1/RQ2 + charge-state results
+bias = pfr.quantify_bias(features, background)  # RQ1/RQ2 + charge-state results
 ```
 
 Or from the command line:
