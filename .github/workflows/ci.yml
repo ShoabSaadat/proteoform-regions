@@ -34,6 +34,35 @@ jobs:
       - name: Coverage
         run: pytest -m "not network" --cov --cov-report=term
 
+  notebook:
+    # walkthrough notebook executes headless, offline (committed sample + snapshot)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Execute walkthrough notebook
+        run: pytest --nbmake docs/sadeghi_walkthrough.ipynb
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[docs]"
+      - name: Build docs (strict)
+        run: mkdocs build --strict
+
   build:
     runs-on: ubuntu-latest
     steps:

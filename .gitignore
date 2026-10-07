@@ -27,3 +27,6 @@ site/
 
 # uv
 # (uv.lock IS committed: it pins the paper-parity-tested dependency set)
+
+# notebook execution output (generated at run time)
+walkthrough_run/

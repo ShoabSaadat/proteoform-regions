@@ -19,6 +19,7 @@ adapter key             source format
 ``glycopeptide``        pGlyco3/GlyPep-Quant per-run glycopeptide records
 ``spectronaut``         Spectronaut facility peptide quant TSV
 ``progenesis``          Progenesis QI peptide CSV
+``fragpipe``            FragPipe/MSFragger combined PSM table
 ======================  =====================================================
 """
 
@@ -29,6 +30,7 @@ from pathlib import Path
 
 from ..study import StudyConfig
 from .diann import parse_diann
+from .fragpipe import parse_fragpipe
 from .glycopeptide import parse_glycopeptide
 from .maxquant import parse_maxquant_msms, parse_maxquant_peptides
 from .mzidentml import parse_mzidentml
@@ -43,6 +45,7 @@ PARSERS: dict[str, Callable] = {
     "glycopeptide": parse_glycopeptide,
     "spectronaut": parse_spectronaut,
     "progenesis": parse_progenesis,
+    "fragpipe": parse_fragpipe,
 }
 
 

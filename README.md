@@ -54,6 +54,12 @@ $ proteoform-regions benchmark    # frozen ExPASy/UniProt engine benchmark, offl
 Hosted documentation (installation, quickstart, walkthrough on a new dataset, CLI + API
 reference): <https://shoabsaadat.github.io/proteoform-regions>
 
+New-dataset walkthrough (FragPipe PSMs → regions, fully offline on committed sample data):
+[`docs/sadeghi_walkthrough.ipynb`](docs/sadeghi_walkthrough.ipynb) — the notebook executes
+headless in CI, and its sample assets live in
+[`examples/walkthrough/`](examples/walkthrough/) (50-PSM Sheet12 sample + dated UniProt
+snapshot; never the 181 MB raw sheet).
+
 ## Method provenance
 
 Every numerical default in this package (pK tables, the 7–60 aa digest length filter, the

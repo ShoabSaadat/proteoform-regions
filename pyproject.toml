@@ -50,6 +50,13 @@ dev = [
     "pytest>=8",
     "pytest-cov>=5",
     "ruff>=0.6",
+    "nbmake>=1.5",      # headless walkthrough-notebook execution in CI
+    "ipykernel>=6",
+]
+docs = [
+    "mkdocs-material>=9",
+    "mkdocstrings[python]>=0.26",
+    "mkdocs-jupyter>=0.25",
 ]
 
 [project.urls]
@@ -71,6 +78,7 @@ include = ["src", "tests", "docs", "examples", "CHANGELOG.md", "LICENSE", "READM
 line-length = 110
 target-version = "py310"
 src = ["src", "tests"]
+extend-exclude = ["*.ipynb"] # notebooks: executed headless by nbmake, not lint targets
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]

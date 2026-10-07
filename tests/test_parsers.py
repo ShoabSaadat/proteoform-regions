@@ -35,9 +35,10 @@ def write(path: Path, text: str) -> Path:
 
 
 class TestRegistry:
-    def test_seven_adapters_registered(self):
+    def test_eight_adapters_registered(self):
         assert list_parsers() == [
             "diann",
+            "fragpipe",
             "glycopeptide",
             "maxquant_msms",
             "maxquant_peptides",
@@ -397,3 +398,94 @@ class TestMaxquantPeptidesS6Quirks:
         loaded = study.load_cohort(out)[0]
         assert loaded.drop_zero_intensities is True
         assert loaded.psm_count_zero_as_none is True
+
+
+class TestFragpipe:
+    """FragPipe combined-PSM adapter: PSMs aggregate to (peptide, protein) rows.
+
+    Unit fixtures pin the aggregation semantics (min-start position with its
+    end, psm_count, median Hyperscore, decoy flag); the committed 50-row
+    Sheet12 sample (tests/data) pins real-data shape - it is also the
+    walkthrough dataset (examples/walkthrough).
+    """
+
+    FIXTURE = (
+        "Spectrum\tSpectrum File\tPeptide\tModified Peptide\tPrev AA\tNext AA\tCharge\t"
+        "Hyperscore\tIntensity\tProtein Start\tProtein End\tProtein\tProtein ID\t"
+        "Entry Name\tGene\tProtein Description\tMapped Proteins\n"
+        "F1\tf1.raw\tEQQDSPGNK\t\tK\tD\t2\t18.77\t100.0\t446\t454\t"
+        "sp|P08697|A2AP_HUMAN\tP08697\tA2AP_HUMAN\tSERPINF2\tAlpha-2-antiplasmin\t\n"
+        "F2\tf1.raw\tEQQDSPGNK\t\tK\tD\t3\t16.78\t50.0\t446\t454\t"
+        "sp|P08697|A2AP_HUMAN\tP08697\tA2AP_HUMAN\tSERPINF2\tAlpha-2-antiplasmin\t\n"
+        "F3\tf2.raw\tEQQDSPGNK\t\tK\tD\t2\t21.10\t0.0\t446\t454\t"
+        "sp|P08697|A2AP_HUMAN\tP08697\tA2AP_HUMAN\tSERPINF2\tAlpha-2-antiplasmin\t\n"
+        "F4\tf1.raw\tSGKDPDR\tsGKDPDR\tR\tF\t2\t19.73\t\t192\t198\t"
+        "tr|A0A096LPE2|XX\tA0A096LPE2\tXX\tSAA2-SAA4\tReadthrough protein\ttr|A|\n"
+        "F5\tf1.raw\tQANTEER\t\tK\tK\t2\t22.20\t10.0\t349\t355\t"
+        "sp|P06396|GELS_HUMAN\tP06396\tGELS_HUMAN\tGSN\tGelsolin\t\n"
+        "F6\tf1.raw\tDECOYPEPK\t\tK\tK\t2\t9.99\t\t1\t9\t"
+        "sp|REV_P99999|XXX\tREV_P99999\tXXX\tXXX\tDecoy protein\t\n"
+    )
+
+    def _run(self, tmp_path, **kw):
+        f = write(tmp_path / "PXDTEST/psm.tsv", self.FIXTURE)
+        cfg = make_config("fragpipe", **kw)
+        rows, n_raw = get_parser("fragpipe")(cfg, [f])
+        return rows, n_raw
+
+    def test_psm_aggregation_semantics(self, tmp_path):
+        rows, n_raw = self._run(tmp_path)
+        assert n_raw == 6
+        by_seq = {r["peptide_sequence"]: r for r in rows}
+        agg = by_seq["EQQDSPGNK"]
+        assert agg["psm_count"] == 3  # three PSMs collapse to one peptide row
+        assert agg["run_count"] == 2  # two distinct spectrum files
+        assert agg["start_position"] == 446.0 and agg["end_position"] == 454.0
+        assert agg["peptide_intensity"] == 150.0  # summed over PSMs
+        assert agg["score_value"] == pytest.approx(18.77)  # median hyperscore
+        assert agg["uniprot_accession"] == "P08697"
+        assert agg["gene_symbol"] == "SERPINF2"
+        assert agg["protein_name_raw"] == "Alpha-2-antiplasmin"
+        assert agg["modified_sequence"] is None  # empty Modified Peptide -> None
+        assert agg["source_parser_family"] == "fragpipe_psm_table"
+        assert agg["confidence_tier"] == "Tier B"
+
+    def test_decoy_flagged_not_dropped(self, tmp_path):
+        rows, _ = self._run(tmp_path)
+        decoys = [r for r in rows if r["decoy_or_contaminant"]]
+        assert len(decoys) == 1 and decoys[0]["peptide_sequence"] == "DECOYPEPK"
+        assert len(rows) == 4  # 4 (peptide, protein) groups from 6 PSMs
+
+    def test_missing_intensity_and_modified_stay_none(self, tmp_path):
+        rows, _ = self._run(tmp_path)
+        by_seq = {r["peptide_sequence"]: r for r in rows}
+        assert by_seq["SGKDPDR"]["peptide_intensity"] is None
+        assert by_seq["SGKDPDR"]["modified_sequence"] == "sGKDPDR"
+
+    def test_comma_delimited_sheet_is_sniffed(self, tmp_path):
+        comma = self.FIXTURE.replace("\t", ",")
+        f = write(tmp_path / "PXDTEST/psm.csv", comma)
+        cfg = make_config("fragpipe")
+        rows, n_raw = get_parser("fragpipe")(cfg, [f])
+        assert n_raw == 6 and len(rows) == 4
+
+    def test_sheet12_sample_fifty_rows(self):
+        """The committed walkthrough sample parses: 50 PSMs -> 23 peptide rows."""
+        import pandas as pd
+
+        from proteoform_regions.parsers import parse_study
+
+        root = Path(__file__).resolve().parents[1]
+        cfg = study.StudyConfig(
+            dataset_accession="PXD077545",
+            adapter="fragpipe",
+            search_engine="FragPipe/MSFragger",
+            files=[{"name": "sheet12_sample50.csv"}],
+        )
+        rows, stats = parse_study(cfg, root / "examples/walkthrough")
+        assert stats["n_evidence_rows"] == 23
+        assert stats["stat1"] == 50
+        frame = pd.DataFrame(rows)
+        assert frame["start_position"].notna().all()
+        assert (frame["psm_count"] >= 1).all()
+        assert not frame["decoy_or_contaminant"].any()
