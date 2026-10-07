@@ -3,7 +3,7 @@
 [![CI](https://github.com/ShoabSaadat/proteoform-regions/actions/workflows/ci.yml/badge.svg)](https://github.com/ShoabSaadat/proteoform-regions/actions/workflows/ci.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ShoabSaadat/proteoform-regions/blob/main/LICENSE)
 [![Code style: typed](https://img.shields.io/badge/style-typed-333333.svg)](https://mypy-lang.org)
 
 **Proteoform-aware region inference and detection-bias quantification from bottom-up proteomics peptide tables.**
@@ -86,4 +86,4 @@ Supplementary Methods.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/ShoabSaadat/proteoform-regions/blob/main/LICENSE).
