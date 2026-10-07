@@ -1,6 +1,7 @@
 """CLI tests: --help snapshot, version, offline benchmark, and an e2e `run`."""
 
 import json
+import re
 
 import pytest
 from typer.testing import CliRunner
@@ -13,6 +14,15 @@ runner = CliRunner()
 
 COMMANDS = ["harmonize", "map", "compute", "background", "stitch", "bias", "run", "benchmark"]
 
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain(output: str) -> str:
+    """Strip ANSI styling. With color forced (CI runners set FORCE_COLOR),
+    typer/rich styles ``--`` and the option name as separate spans, so the
+    contiguous substring ``--help`` only exists after stripping."""
+    return _ANSI.sub("", output)
+
 
 class TestSurface:
     def test_version(self):
@@ -24,18 +34,18 @@ class TestSurface:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
         for command in COMMANDS:
-            assert command in result.output
+            assert command in plain(result.output)
 
     @pytest.mark.parametrize("command", COMMANDS)
     def test_subcommand_help_snapshot(self, command):
         result = runner.invoke(app, [command, "--help"])
         assert result.exit_code == 0
-        assert "--help" in result.output
+        assert "--help" in plain(result.output)
         # paper defaults are visible in every stage's help
         if command in ("stitch", "run"):
-            assert "--gap" in result.output
+            assert "--gap" in plain(result.output)
         if command in ("bias", "run"):
-            assert "--seed" in result.output
+            assert "--seed" in plain(result.output)
 
     def test_unknown_command_fails(self):
         assert runner.invoke(app, ["warp"]).exit_code != 0
