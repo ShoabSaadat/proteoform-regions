@@ -22,6 +22,7 @@ DEFAULT_PARSER_FAMILY = {
     "glycopeptide": "specialized_glycopeptide_csv",
     "spectronaut": "spectronaut_peptide_quant",
     "progenesis": "progenesis_peptide_csv",
+    "fragpipe": "fragpipe_psm_table",
 }
 
 

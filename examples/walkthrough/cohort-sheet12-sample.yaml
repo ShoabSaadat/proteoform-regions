@@ -1,0 +1,19 @@
+# Walkthrough cohort: 50-row sample of the Sadeghi 2026 FragPipe PSM sheet
+# (breast-cancer top-down/fractionation cohort, PXD077545).
+#
+# The committed file is a 50-PSM sample of FragPipe_Fractions_psm (Sheet12),
+# pinned by the test suite; the full table is available from the study's
+# PRIDE/Zenodo record - it is deliberately NOT committed (181 MB xlsx).
+studies:
+  - dataset_accession: PXD077545
+    adapter: fragpipe
+    sample_type: breast cancer tissue (BC fractions, BUP LC-CE arms)
+    disease_context: breast cancer vs non-cancer control (fractionation cohort)
+    assay_type: LC-MS/MS
+    acquisition_mode: DDA
+    search_engine: FragPipe/MSFragger
+    representative_file_arm: breast-cancer fraction arm (interact.pep.xml)
+    representative_file_species: Homo sapiens
+    files:
+      - name: sheet12_sample50.csv
+        url: null

@@ -1,0 +1,55 @@
+site_name: proteoform-regions
+site_description: Proteoform-aware region inference and detection-bias quantification from bottom-up proteomics peptide tables
+site_url: https://shoabsaadat.github.io/proteoform-regions
+repo_url: https://github.com/ShoabSaadat/proteoform-regions
+repo_name: ShoabSaadat/proteoform-regions
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/weather-night, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/weather-sunny, name: Switch to light mode }
+
+strict: true
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Quickstart: quickstart.md
+  - Walkthrough (Sadeghi FragPipe PSMs): sadeghi_walkthrough.ipynb
+  - Parser registry: parsers.md
+  - Study configuration: study-config.md
+  - CLI reference: cli.md
+  - API reference: api.md
+  - Methods vs paper modules: methods-mapping.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - tables
+  - toc: { permalink: true }
+
+plugins:
+  - search
+  - mkdocs-jupyter:
+      execute: false  # notebook ships executed; re-executed by CI nbmake instead
+      include_source: true
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_root_heading: true
+            merge_init_into_class: true
