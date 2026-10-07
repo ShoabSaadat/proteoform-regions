@@ -29,19 +29,24 @@ pip install "proteoform-regions[plots]"   # + plotting helpers
 ```python
 import proteoform_regions as pfr
 
-study = pfr.StudyConfig.from_yaml("study.yaml")
-evidence = pfr.harmonize(study)  # -> tiered evidence table + sha256 manifest
-protein_map, proteins = pfr.map_to_uniprot(evidence)
-features = pfr.compute_features(evidence, protein_map, calculator="bjellqvist")
-background = pfr.build_background(protein_map)
-regions = pfr.stitch_regions(features, gap=25)
-bias = pfr.quantify_bias(features, background)  # RQ1/RQ2 + charge-state results
+studies = pfr.load_cohort("cohort.yaml")  # declarative study configs
+evidence, stats = pfr.harmonize(studies, "data/raw")  # tiered evidence table
+mapping, proteins = pfr.map_to_uniprot(evidence)  # UniProt snapshot-pinned
+features = pfr.compute_features(evidence, mapping, proteins, calculator="bjellqvist")
+background = pfr.build_background(protein_sequences)  # digestion-matched tryptic peptides
+regions = pfr.stitch_regions(features, mapping)  # gap-25 single-linkage regions
+bias = pfr.quantify_bias(features, background)  # RQ1 permutation + RQ2 OR meta-analysis
+
+report = pfr.run("cohort.yaml", "run/")  # all stages + artifacts + sha256 manifest
 ```
 
 Or from the command line:
 
 ```console
-$ proteoform-regions run --study study.yaml --out-dir run/
+$ proteoform-regions run --study cohort.yaml --out-dir run/
+$ proteoform-regions bias --features run/processed_feature_table.csv \
+    --background run/processed_tryptic_background.csv --out results.json
+$ proteoform-regions benchmark    # frozen ExPASy/UniProt engine benchmark, offline
 ```
 
 ## Documentation

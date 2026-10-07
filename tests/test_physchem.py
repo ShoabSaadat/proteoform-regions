@@ -9,7 +9,7 @@ Three layers of evidence:
 """
 
 import csv
-from pathlib import Path
+from importlib.resources import files
 
 import numpy as np
 import pytest
@@ -17,7 +17,7 @@ import pytest
 from proteoform_regions import digest, physchem
 from tests import reference_implementations as ref
 
-GOLDEN = Path(__file__).parent / "data" / "physchem_golden.csv"
+GOLDEN = files("proteoform_regions") / "data" / "physchem_golden.csv"
 
 SEQS = [
     "ALPAPIEK",
