@@ -76,8 +76,15 @@ def study_or(det_classes, bg_classes, target: str = "basic") -> dict:
     d = int((bg_classes != target).sum())
     lor, se = or_2x2(a, b, c, d)
     return dict(
-        a=a, b=b, c=c, d=d, log_or=lor, se=se, or_=float(np.exp(lor)),
-        ci_low=float(np.exp(lor - 1.96 * se)), ci_high=float(np.exp(lor + 1.96 * se)),
+        a=a,
+        b=b,
+        c=c,
+        d=d,
+        log_or=lor,
+        se=se,
+        or_=float(np.exp(lor)),
+        ci_low=float(np.exp(lor - 1.96 * se)),
+        ci_high=float(np.exp(lor + 1.96 * se)),
         p=float(2 * stats.norm.sf(abs(lor / se))),
     )
 
@@ -104,16 +111,13 @@ def dl_random_effects(table: pd.DataFrame) -> dict:
     mu_fe, _, _, Q, _ = fe_summary(table)
     k = len(table)
     tau2 = (
-        max(0.0, (Q - (k - 1)) / (np.sum(w_inv) - np.sum(w_inv**2) / np.sum(w_inv)))
-        if Q > (k - 1)
-        else 0.0
+        max(0.0, (Q - (k - 1)) / (np.sum(w_inv) - np.sum(w_inv**2) / np.sum(w_inv))) if (k - 1) < Q else 0.0
     )
     w_re = 1 / (table["se"] ** 2 + tau2)
     mu_re = float(np.sum(w_re * table["log_or"]) / np.sum(w_re))
     se_re = float(np.sqrt(1 / np.sum(w_re)))
     p_re = float(2 * stats.norm.sf(abs(mu_re / se_re)))
-    return dict(tau2=float(tau2), mu=float(mu_re), se=se_re,
-                or_=float(np.exp(mu_re)), p=p_re)
+    return dict(tau2=float(tau2), mu=float(mu_re), se=se_re, or_=float(np.exp(mu_re)), p=p_re)
 
 
 def loo_envelope(table: pd.DataFrame, by: str = "dataset_accession") -> tuple[float, float]:
@@ -150,9 +154,11 @@ def rq1_permutation(
     per_protein = (
         features.dropna(subset=["precursor_pi"])
         .groupby(["dataset_accession", "mapped_accession"])
-        .agg(n_unique=("peptide_sequence", "nunique"),
-             median_peptide_pi=("peptide_pi", "median"),
-             precursor_pi=("precursor_pi", "first"))
+        .agg(
+            n_unique=("peptide_sequence", "nunique"),
+            median_peptide_pi=("peptide_pi", "median"),
+            precursor_pi=("precursor_pi", "first"),
+        )
         .reset_index()
     )
     per_protein = per_protein[per_protein["n_unique"] >= min_unique]
@@ -173,14 +179,18 @@ def rq1_permutation(
 
     obs_divs = np.array(obs_divs)
     T_obs = float(np.median(obs_divs))
-    global_null = np.array([
-        np.median(rng.choice(null_divs_global, size=len(null_divs_global), replace=True))
-        for _ in range(b_boot)
-    ])
-    p_global = (
-        (1 + np.sum(np.abs(global_null - np.median(null_divs_global)) >= abs(T_obs - np.median(null_divs_global))))
-        / (b_boot + 1)
+    global_null = np.array(
+        [
+            np.median(rng.choice(null_divs_global, size=len(null_divs_global), replace=True))
+            for _ in range(b_boot)
+        ]
     )
+    p_global = (
+        1
+        + np.sum(
+            np.abs(global_null - np.median(null_divs_global)) >= abs(T_obs - np.median(null_divs_global))
+        )
+    ) / (b_boot + 1)
     per_protein_valid = per_protein.iloc[: len(per_protein_p)].copy()
     per_protein_valid["perm_p"] = per_protein_p
     per_protein_valid["perm_q"] = bh_q(per_protein_p)

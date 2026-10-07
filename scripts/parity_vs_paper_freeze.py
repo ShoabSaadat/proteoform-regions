@@ -49,8 +49,17 @@ def _canonical(frame: pd.DataFrame) -> pd.DataFrame:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--paper-root", required=True, type=Path)
-    ap.add_argument("--data-dir", type=Path, default=None, help="raw peptide_tables dir (default: <paper>/analysis/data/raw/peptide_tables)")
-    ap.add_argument("--cohort", type=Path, default=Path(__file__).parent.parent / "examples/studies/cohort-paper-tranche.yaml")
+    ap.add_argument(
+        "--data-dir",
+        type=Path,
+        default=None,
+        help="raw peptide_tables dir (default: <paper>/analysis/data/raw/peptide_tables)",
+    )
+    ap.add_argument(
+        "--cohort",
+        type=Path,
+        default=Path(__file__).parent.parent / "examples/studies/cohort-paper-tranche.yaml",
+    )
     args = ap.parse_args()
 
     paper = args.paper_root
@@ -100,7 +109,9 @@ def main() -> int:
             neq = got[col] != want[col]
             if neq.any():
                 i = int(neq.to_numpy().nonzero()[0][0])
-                diffs.append(f"{col} ({int(neq.sum())} cells, e.g. row {i}: {want.at[i, col][:40]!r} != {got.at[i, col][:40]!r})")
+                diffs.append(
+                    f"{col} ({int(neq.sum())} cells, e.g. row {i}: {want.at[i, col][:40]!r} != {got.at[i, col][:40]!r})"  # noqa: E501
+                )
         if diffs:
             print(f"  {acc}: {len(diffs)} diverging columns:")
             for d in diffs[:8]:

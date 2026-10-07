@@ -13,9 +13,11 @@ This package is the software implementation of the pipeline described in
 - ``digest``    -- in-silico tryptic digestion + digestion-matched backgrounds
 - ``regions``   -- single-linkage detected-region stitching (gap rule)
 - ``parsers``   -- search-engine peptide-table adapters + registry
+- ``study``     -- StudyConfig / cohort YAML
+- ``harmonize`` -- stage 1 orchestration (downloads + adapters + concat)
 - ``mapping``   -- UniProt accession mapping + protein properties
 - ``stats``     -- detection-bias models (permutation null, OR meta-analysis)
-- ``pipeline``  -- end-to-end orchestration
+- ``pipeline``  -- end-to-end orchestration (map/compute/stitch/bias + run)
 - ``cli``       -- command-line interface
 """
 
@@ -30,8 +32,25 @@ __all__ = [
     "ensure_downloads",
     "parse_study",
     "list_parsers",
+    "map_to_uniprot",
+    "normalize_accessions",
+    "compute_features",
+    "build_background",
+    "stitch_regions",
+    "quantify_bias",
+    "run",
+    "RunReport",
 ]
 
-from .study import FileSpec, StudyConfig, load_cohort  # noqa: E402
 from .harmonize import ensure_downloads, harmonize  # noqa: E402
+from .mapping import map_to_uniprot, normalize_accessions  # noqa: E402
 from .parsers import list_parsers, parse_study  # noqa: E402
+from .pipeline import (  # noqa: E402
+    RunReport,
+    build_background,
+    compute_features,
+    quantify_bias,
+    run,
+    stitch_regions,
+)
+from .study import FileSpec, StudyConfig, load_cohort  # noqa: E402

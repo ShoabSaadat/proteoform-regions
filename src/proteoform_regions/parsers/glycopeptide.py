@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import re
 from pathlib import Path
 
@@ -55,10 +56,8 @@ def parse_glycopeptide(config: StudyConfig, paths: list[Path]) -> tuple[list[dic
                     continue
                 if line.startswith("Scan"):
                     fields = [f for f in line.split("\t") if f != ""]
-                    try:
+                    with contextlib.suppress(IndexError):
                         current["sum_intensity"] = to_float(fields[-1])
-                    except IndexError:
-                        pass
                     key = (current["sequence"], current["glycan"], current["sites"])
                     entry = records.setdefault(
                         key, {"charges": [], "sum_intensities": [], "psm_count": 0, "runs": set()}
@@ -97,7 +96,9 @@ def parse_glycopeptide(config: StudyConfig, paths: list[Path]) -> tuple[list[dic
             psm_count=int(entry["psm_count"]),
             run_count=len(entry["runs"]),
             charge_state=float(np.median(entry["charges"])) if entry["charges"] else None,
-            peptide_intensity=float(np.median(entry["sum_intensities"])) if entry["sum_intensities"] else None,
+            peptide_intensity=float(np.median(entry["sum_intensities"]))
+            if entry["sum_intensities"]
+            else None,
             score_label="GlyPep-Quant record (no FDR q exported)",
             score_source="glypepquant_runs",
             start_position=site_position,

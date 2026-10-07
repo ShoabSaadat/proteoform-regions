@@ -70,8 +70,18 @@ def parse_maxquant_msms(config: StudyConfig, paths: list[Path]) -> tuple[list[di
     medians/max over PSMs per peptide group.
     """
     wanted = [
-        "Raw file", "Scan number", "Sequence", "Modified sequence", "Proteins", "Gene Names",
-        "Protein Names", "Charge", "PEP", "Score", "Retention time", "Reverse",
+        "Raw file",
+        "Scan number",
+        "Sequence",
+        "Modified sequence",
+        "Proteins",
+        "Gene Names",
+        "Protein Names",
+        "Charge",
+        "PEP",
+        "Score",
+        "Retention time",
+        "Reverse",
         "Potential contaminant",
     ]
     rows: list[dict] = []
@@ -111,7 +121,9 @@ def parse_maxquant_msms(config: StudyConfig, paths: list[Path]) -> tuple[list[di
                 protein_name_raw=record["protein_name"],
                 psm_count=int(record["psm_count"]),
                 run_count=int(record["n_runs"]),
-                posterior_error_probability=float(record["pep_median"]) if pd.notna(record["pep_median"]) else None,
+                posterior_error_probability=float(record["pep_median"])
+                if pd.notna(record["pep_median"])
+                else None,
                 score_value=float(record["score_max"]) if pd.notna(record["score_max"]) else None,
                 score_label="MaxQuant Andromeda score (max per peptide)",
                 score_source="maxquant_msms",

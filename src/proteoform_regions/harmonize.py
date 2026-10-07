@@ -24,8 +24,6 @@ def ensure_downloads(
     studies: list[StudyConfig], data_dir: str | Path, timeout: float = 600.0
 ) -> pd.DataFrame:
     """Fetch missing raw files (skip-if-exists, one retry) and return a manifest."""
-    import requests
-
     manifest_rows: list[dict] = []
     for study in studies:
         for spec in study.files:
@@ -49,6 +47,8 @@ def ensure_downloads(
 
 def _fetch(url: str, dest: Path, timeout: float, retries: int = 2) -> None:
     import time
+
+    import requests
 
     for attempt in range(1, retries + 1):
         try:

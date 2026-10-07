@@ -20,9 +20,20 @@ def parse_diann(config: StudyConfig, paths: list[Path]) -> tuple[list[dict], int
     PXD069732 extraction never requested MS2.Scan -> USI None).
     """
     usecols_wanted = [
-        "File.Name", "Protein.Group", "Protein.Ids", "Protein.Names", "Genes", "Modified.Sequence",
-        "Stripped.Sequence", "Precursor.Charge", "Q.Value", "PEP", "CScore", "Precursor.Normalised",
-        "RT", "MS2.Scan",
+        "File.Name",
+        "Protein.Group",
+        "Protein.Ids",
+        "Protein.Names",
+        "Genes",
+        "Modified.Sequence",
+        "Stripped.Sequence",
+        "Precursor.Charge",
+        "Q.Value",
+        "PEP",
+        "CScore",
+        "Precursor.Normalised",
+        "RT",
+        "MS2.Scan",
     ]
     rows: list[dict] = []
     n_raw = 0
@@ -33,7 +44,14 @@ def parse_diann(config: StudyConfig, paths: list[Path]) -> tuple[list[dict], int
         n_raw += len(frame)
         agg = (
             frame.groupby(
-                ["Stripped.Sequence", "Modified.Sequence", "Precursor.Charge", "Protein.Group", "Protein.Ids", "Genes"],
+                [
+                    "Stripped.Sequence",
+                    "Modified.Sequence",
+                    "Precursor.Charge",
+                    "Protein.Group",
+                    "Protein.Ids",
+                    "Genes",
+                ],
                 dropna=False,
             )
             .agg(
@@ -45,7 +63,9 @@ def parse_diann(config: StudyConfig, paths: list[Path]) -> tuple[list[dict], int
                 intensity_median=("Precursor.Normalised", "median")
                 if "Precursor.Normalised" in usecols
                 else ("PEP", "median"),
-                protein_name=("Protein.Names", "first") if "Protein.Names" in usecols else ("Protein.Group", "first"),
+                protein_name=("Protein.Names", "first")
+                if "Protein.Names" in usecols
+                else ("Protein.Group", "first"),
                 example_file=("File.Name", "first"),
                 example_scan=("MS2.Scan", "first") if "MS2.Scan" in usecols else ("PEP", "median"),
             )

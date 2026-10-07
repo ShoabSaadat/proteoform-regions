@@ -24,7 +24,9 @@ def parse_spectronaut(config: StudyConfig, paths: list[Path]) -> tuple[list[dict
         frame = pd.read_csv(path, sep="\t", low_memory=False)
         n_raw += len(frame)
         evidence_count_cols = [c for c in frame.columns if c.endswith(".PEP.RunEvidenceCount")]
-        quantity_cols = [c for c in frame.columns if ".PEP.Quantity" in c or ("[]" not in c and c.endswith(".AvgQuantity"))]
+        quantity_cols = [
+            c for c in frame.columns if ".PEP.Quantity" in c or ("[]" not in c and c.endswith(".AvgQuantity"))
+        ]
         if not quantity_cols:
             quantity_cols = [c for c in frame.columns if "Quantity" in c and "RunEvidence" not in c]
         for record in frame.to_dict(orient="records"):
@@ -50,7 +52,8 @@ def parse_spectronaut(config: StudyConfig, paths: list[Path]) -> tuple[list[dict
                 uniprot_accession=str(record.get("PG.ProteinGroups")).split(";")[0]
                 if record.get("PG.ProteinGroups")
                 else None,
-                protein_group=record.get("PEP.AllOccurringProteinAccessions") or record.get("PG.ProteinGroups"),
+                protein_group=record.get("PEP.AllOccurringProteinAccessions")
+                or record.get("PG.ProteinGroups"),
                 gene_symbol=record.get("PG.Genes"),
                 start_position=first_pos,
                 run_count=max(run_count, 1),

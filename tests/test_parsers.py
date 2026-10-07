@@ -9,7 +9,6 @@ graphs). Real-data equivalence is covered separately by
 import gzip
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 import proteoform_regions as pfr
@@ -38,8 +37,13 @@ def write(path: Path, text: str) -> Path:
 class TestRegistry:
     def test_seven_adapters_registered(self):
         assert list_parsers() == [
-            "diann", "glycopeptide", "maxquant_msms", "maxquant_peptides",
-            "mzidentml", "progenesis", "spectronaut",
+            "diann",
+            "glycopeptide",
+            "maxquant_msms",
+            "maxquant_peptides",
+            "mzidentml",
+            "progenesis",
+            "spectronaut",
         ]
 
     def test_unknown_adapter_raises(self):
@@ -131,7 +135,10 @@ class TestDiann:
 
     def test_s6_semantics_no_usi_no_cscore(self, tmp_path):
         header_s6 = self.HEADER.replace("\tMS2.Scan\n", "\n").replace("\tCScore", "")
-        fixture = header_s6 + "S1.raw\tP02768\tP02768\tAlbumin\tALB\t_ALPAPIEK_\tALPAPIEK\t2\t0.001\t0.01\t1e5\t12.0\n"
+        fixture = (
+            header_s6
+            + "S1.raw\tP02768\tP02768\tAlbumin\tALB\t_ALPAPIEK_\tALPAPIEK\t2\t0.001\t0.01\t1e5\t12.0\n"
+        )
         f = write(tmp_path / "PXDTEST/report.tsv", fixture)
         cfg = make_config("diann", files=[{"name": f.name}], build_usi=False)
         rows, _ = get_parser("diann")(cfg, [f])
@@ -150,7 +157,10 @@ class TestMzIdentML:
   <DBSequence id="dbs2" accession="P69999" searchDatabase_ref="sdb1"/>
   <Peptide id="pep1"><PeptideSequence>ALPAPIEK</PeptideSequence></Peptide>
  </SequenceCollection>
- <AnalysisProtocolCollection><SpectrumIdentificationProtocol id="sip1" searchDatabase_ref="sdb1"/><ProteinDetectionProtocol id="pdp1"/></AnalysisProtocolCollection>
+ <AnalysisProtocolCollection>
+  <SpectrumIdentificationProtocol id="sip1" searchDatabase_ref="sdb1"/>
+  <ProteinDetectionProtocol id="pdp1"/>
+ </AnalysisProtocolCollection>
  <DataCollection><Inputs><SearchDatabase id="sdb1" location="local.fasta"/><SpectraData id="sd1" location="file:///run1.raw"/></Inputs>
  <AnalysisData>
   <ProteinDetectionList id="pdl1"/>
@@ -170,10 +180,10 @@ class TestMzIdentML:
 """
         # PeptideEvidence elements must precede SIRs for the reference maps
         mzid = mzid.replace(
-            ' <DataCollection>',
-            ' <AnalysisCollection><SpectrumIdentification id="si1" spectraData_ref="sd1" protocol_ref="sip1"/></AnalysisCollection>\n'
+            " <DataCollection>",
+            ' <AnalysisCollection><SpectrumIdentification id="si1" spectraData_ref="sd1" protocol_ref="sip1"/></AnalysisCollection>\n'  # noqa: E501
             ' <PeptideEvidence id="pe1" peptide_ref="pep1" dBSequence_ref="dbs1" start="25" end="32"/>'
-            '<PeptideEvidence id="pe2" peptide_ref="pep1" dBSequence_ref="dbs2" start="9" end="16"/>\n <DataCollection>',
+            '<PeptideEvidence id="pe2" peptide_ref="pep1" dBSequence_ref="dbs2" start="9" end="16"/>\n <DataCollection>',  # noqa: E501
         )
         path = tmp_path / "PXDTEST/test.mzid.gz"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -196,9 +206,9 @@ class TestGlycopeptide:
     def test_anl018_policy_and_aggregation(self, tmp_path):
         def block(seq, glycan, site, charge, intensity):
             return f"{seq}\t{glycan}\t{site}\t1\n+{charge}\t1\t1\nScan\t1\t{intensity}\n"
-        run_c2 = (
-            block("AAAGFNVSLTDYWGR", "Hex(5)HexNAc(2)NeuAc(1)", "P02768@651", 2, 1000.0)
-            + block("KPYEEELK", "Hex(5)HexNAc(2)", "P02768@80", 3, 500.0)
+
+        run_c2 = block("AAAGFNVSLTDYWGR", "Hex(5)HexNAc(2)NeuAc(1)", "P02768@651", 2, 1000.0) + block(
+            "KPYEEELK", "Hex(5)HexNAc(2)", "P02768@80", 3, 500.0
         )
         run_c14 = block("AAAGFNVSLTDYWGR", "Hex(5)HexNAc(2)NeuAc(1)", "P02768@651", 3, 3000.0)
         files = [
@@ -297,8 +307,16 @@ class TestStudyConfig:
         studies = pfr.load_cohort(cohort)
         assert len(studies) == 10
         assert {s.dataset_accession for s in studies} == {
-            "PXD008583", "PXD052666", "PXD054594", "PXD055218", "PXD056620",
-            "PXD057799", "PXD060933", "PXD068982", "PXD069732", "PXD071549",
+            "PXD008583",
+            "PXD052666",
+            "PXD054594",
+            "PXD055218",
+            "PXD056620",
+            "PXD057799",
+            "PXD060933",
+            "PXD068982",
+            "PXD069732",
+            "PXD071549",
         }
         by_acc = {s.dataset_accession: s for s in studies}
         assert by_acc["PXD057799"].adapter == "glycopeptide" and len(by_acc["PXD057799"].files) == 8

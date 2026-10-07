@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Any
 
 #: adapter key -> default value written to the ``source_parser_family`` column.
 #: These labels are the source publication's family vocabulary (frozen table).
@@ -40,7 +39,7 @@ class FileSpec:
     sha256: str | None = None
 
     @classmethod
-    def from_dict(cls, d: dict | str) -> "FileSpec":
+    def from_dict(cls, d: dict | str) -> FileSpec:
         if isinstance(d, str):
             return cls(name=d)
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
@@ -77,9 +76,7 @@ class StudyConfig:
         self.files = [FileSpec.from_dict(f) for f in self.files]
         if self.parser_family is None:
             if self.adapter not in DEFAULT_PARSER_FAMILY:
-                raise ValueError(
-                    f"unknown adapter {self.adapter!r}; known: {sorted(DEFAULT_PARSER_FAMILY)}"
-                )
+                raise ValueError(f"unknown adapter {self.adapter!r}; known: {sorted(DEFAULT_PARSER_FAMILY)}")
             self.parser_family = DEFAULT_PARSER_FAMILY[self.adapter]
         if self.study_id is None:
             self.study_id = f"{self.dataset_accession}_{self.study_year}"
@@ -87,12 +84,12 @@ class StudyConfig:
     # -- serialization ---------------------------------------------------------
 
     @classmethod
-    def from_dict(cls, d: dict) -> "StudyConfig":
+    def from_dict(cls, d: dict) -> StudyConfig:
         known = {f.name for f in fields(cls)}
         return cls(**{k: v for k, v in d.items() if k in known})
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "StudyConfig":
+    def from_yaml(cls, path: str | Path) -> StudyConfig:
         import yaml
 
         return cls.from_dict(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
