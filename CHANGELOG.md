@@ -6,6 +6,10 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-10-07
+
+First release candidate: the full paper arc as a package + docs site.
+
 ### Added
 - Package scaffold (hatchling src layout, ruff, pytest, CI) — slice P1.
 - Core science modules: `guard`, `schema`, `physchem`, `digest`, `regions`
@@ -21,12 +25,32 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   `run()` with paper-vocabulary artifacts + sha256 run manifest; Typer CLI
   (`harmonize`/`map`/`compute`/`background`/`stitch`/`bias`/`run`/`benchmark`)
   — slice P4.
+- Test-suite consolidation: committed freeze fixtures + `parity`-marked
+  full-parity layer (harmonize ≡ frozen 70,020-row evidence table on all 10
+  studies; bias headlines exact); MaxQuant S6 numeric-quirk flags
+  (`drop_zero_intensities`, `psm_count_zero_as_none`) — slice P5.
+- `fragpipe` adapter (FragPipe/MSFragger combined PSM tables, PSM-aggregated
+  with protein coordinates) — slice P6.
+- Docs site (MkDocs Material + mkdocstrings + mkdocs-jupyter): install,
+  quickstart, parser registry, study-config reference, CLI reference, API
+  reference, methods↔paper-modules mapping, changelog — slice P6.
+- Walkthrough notebook (`docs/sadeghi_walkthrough.ipynb`, Colab-badged): a
+  new FragPipe dataset end-to-end, fully offline on committed sample data
+  (50-PSM Sheet12 sample + dated UniProt snapshot under
+  `examples/walkthrough/`); executed headless in CI via nbmake — slice P6.
+- Release workflows: trusted-publishing `publish.yml` (TestPyPI via
+  workflow_dispatch, PyPI on `v*` tags, artifact attestations) and Pages
+  `deploy-pages.yml` (workflow_dispatch until Pages is enabled) — slice P7
+  prep.
 
 ### Fixed
 - `harmonize.ensure_downloads`: `_fetch` referenced a `requests` import that
   lived in the caller's scope (NameError on the first uncached download).
 - Ruff/format pass over the P3-committed modules (branch was never pushed, so
   CI had not seen the drift).
+- CLI help tests now strip ANSI before asserting — GitHub runners force
+  color, and typer/rich then style `--` and the option name as separate
+  spans, so contiguous-substring assertions failed on styled bytes.
 
 
 ## [0.1.0] - unreleased
