@@ -23,6 +23,9 @@ def parse_maxquant_peptides(config: StudyConfig, paths: list[Path]) -> tuple[lis
     ``config.extract_protein_names=False`` replicates the S6 extension-tranche
     parsers, which did not map the ``Protein names`` column (the frozen table
     carries empty ``protein_name_raw`` for those studies).
+    ``config.drop_zero_intensities`` / ``config.psm_count_zero_as_none``
+    replicate the S6 numeric quirks (0.0 reporters dropped before the sum;
+    ``MS/MS Count`` 0 -> None).
     """
     rows: list[dict] = []
     n_raw = 0
@@ -54,8 +57,13 @@ def parse_maxquant_peptides(config: StudyConfig, paths: list[Path]) -> tuple[lis
             )
             if getattr(config, "extract_protein_names", True):
                 row["protein_name_raw"] = record.get("Protein names")
+            if config.psm_count_zero_as_none and row["psm_count"] == 0:
+                row["psm_count"] = None  # S6 quirk: int(to_float(x) or 0) or None
             values = [to_float(record.get(c)) for c in intensity_cols]
-            values = [v for v in values if v is not None and np.isfinite(v)]
+            if config.drop_zero_intensities:
+                values = [v for v in values if v]  # S6 quirk: drops 0.0 and None
+            else:
+                values = [v for v in values if v is not None and np.isfinite(v)]  # S1: zeros kept
             if values:
                 row["peptide_intensity"] = float(np.sum(values))
             rows.append(row)

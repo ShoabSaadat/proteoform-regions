@@ -93,6 +93,8 @@ studies:
   - name: peptides.txt
     url: null
   extract_protein_names: false
+  drop_zero_intensities: true
+  psm_count_zero_as_none: true
 - dataset_accession: PXD008583
   adapter: progenesis
   sample_type: serum (TOP12-depleted)
@@ -116,6 +118,8 @@ studies:
   - name: 12m_R_DDA_peptides.txt
     url: null
   extract_protein_names: false
+  drop_zero_intensities: true
+  psm_count_zero_as_none: true
 - dataset_accession: PXD069732
   adapter: diann
   sample_type: serum (Proteograph nanoparticle-enriched)

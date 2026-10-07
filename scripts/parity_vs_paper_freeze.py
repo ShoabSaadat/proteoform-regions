@@ -6,7 +6,8 @@ cohort (read-only against the paper repository's cached raw files) and compares
 the result to the frozen ``peptide_evidence_table.csv`` (k=10, 70,020 rows,
 freeze 2026-09-17) with semantic per-cell comparison:
 
-- numeric-looking values compare as floats;
+- numeric-looking values compare as floats (relative tolerance 1e-6,
+  absorbing cross-version pandas/numpy sum/median rounding drift);
 - everything else compares as strings;
 - ``extraction_date`` is excluded (run-time stamped by design).
 
@@ -20,30 +21,43 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import sys
 from pathlib import Path
 
 import pandas as pd
 
+REL_TOL = 1e-6  # absorbs cross-version float-repr/sum/median rounding drift
+ABS_TOL = 1e-9  # near-zero values compare absolutely
 
-def _norm(v) -> str:
+
+def _as_float(v):
     if v is None or (isinstance(v, float) and pd.isna(v)):
-        return ""
-    s = str(v)
+        return None
     try:
-        f = float(s)
+        f = float(str(v))
     except (ValueError, OverflowError):
-        return s
-    # semantic numeric identity: 6 significant figures absorbs cross-version
-    # float-repr/summation artifacts (numpy pairwise-sum order, median pairing)
-    if f == int(f) and abs(f) < 1e15:
-        return str(int(f))
-    return f"{f:.6g}"
+        return None
+    return f
 
 
-def _canonical(frame: pd.DataFrame) -> pd.DataFrame:
-    return frame.apply(lambda col: col.map(_norm))
+def _cells_equal(a, b) -> bool:
+    """Semantic cell equality: numeric within tolerance, else exact string.
+
+    Numeric comparison (rel 1e-6) is the honest form of "6-significant-figure
+    identity": formatting both sides to %.6g and string-comparing fails
+    exactly AT rounding boundaries (0.00012175549 -> '0.000121755' vs
+    0.00012175551 -> '0.000121756'), which is where pandas/numpy version
+    drift (paper freeze: pandas 3.0.5/numpy 2.4.6) lands. NaN mismatches
+    (one side numeric, other empty) stay SEMANTIC failures.
+    """
+    fa, fb = _as_float(a), _as_float(b)
+    if fa is not None and fb is not None:
+        return abs(fa - fb) <= max(REL_TOL * max(abs(fa), abs(fb)), ABS_TOL)
+    return str(a) == str(b) or (a is None or pd.isna(a)) and (b is None or pd.isna(b))
+
+
+def _count_diffs(got: pd.Series, want: pd.Series) -> int:
+    return int(sum(not _cells_equal(a, b) for a, b in zip(got, want, strict=True)))
 
 
 def main() -> int:
@@ -97,8 +111,8 @@ def main() -> int:
     study_failed = []
     for study in studies:
         acc = study.dataset_accession
-        got = _canonical(evidence[evidence["dataset_accession"] == acc].reset_index(drop=True))
-        want = _canonical(frozen[frozen["dataset_accession"] == acc].reset_index(drop=True))
+        got = evidence[evidence["dataset_accession"] == acc].reset_index(drop=True)
+        want = frozen[frozen["dataset_accession"] == acc].reset_index(drop=True)
         if len(got) != len(want):
             print(f"  {acc}: ROW MISMATCH package={len(got)} frozen={len(want)}")
             study_failed.append(acc)
@@ -106,11 +120,12 @@ def main() -> int:
             continue
         diffs = []
         for col in columns:
-            neq = got[col] != want[col]
-            if neq.any():
-                i = int(neq.to_numpy().nonzero()[0][0])
+            n_diff = _count_diffs(got[col], want[col])
+            if n_diff:
+                first = next(i for i in range(len(got)) if not _cells_equal(got.at[i, col], want.at[i, col]))
                 diffs.append(
-                    f"{col} ({int(neq.sum())} cells, e.g. row {i}: {want.at[i, col][:40]!r} != {got.at[i, col][:40]!r})"  # noqa: E501
+                    f"{col} ({n_diff} cells, e.g. row {first}: "
+                    f"{str(want.at[first, col])[:40]!r} != {str(got.at[first, col])[:40]!r})"
                 )
         if diffs:
             print(f"  {acc}: {len(diffs)} diverging columns:")
@@ -121,11 +136,11 @@ def main() -> int:
         else:
             print(f"  {acc}: PARITY ({len(got)} rows, {len(columns)} columns)")
 
-    pkg_hash = hashlib.sha256(_canonical(evidence[columns]).to_csv(index=False).encode()).hexdigest()
-    froz_hash = hashlib.sha256(_canonical(frozen[columns]).to_csv(index=False).encode()).hexdigest()
-    print(f"\ncanonical-frame sha256: package={pkg_hash[:16]}... frozen={froz_hash[:16]}...")
-    if failures == 0 and pkg_hash == froz_hash:
-        print("PARITY: IDENTICAL (semantic equality on all studies, all columns)")
+    if failures == 0:
+        print(
+            "PARITY: PASSED (semantic equality on all studies, all columns;\n"
+            f"numeric cells within rel {REL_TOL:g}, strings exact; extraction_date excluded)"
+        )
         return 0
     print(f"PARITY: FAILED ({failures} divergences; studies: {study_failed})")
     return 1

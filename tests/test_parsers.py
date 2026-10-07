@@ -351,3 +351,49 @@ class TestHarmonizeEndToEnd:
         assert_full_evidence_table(evidence, "synthetic cohort evidence")
         assert set(stats["dataset_accession"]) == {"PXDTEST", "PXDOThER"}
         assert parse_study(studies[0], tmp_path)[1]["n_evidence_rows"] == 1
+
+
+class TestMaxquantPeptidesS6Quirks:
+    """S6 extension-tranche numeric quirks vs S1 pilot semantics.
+
+    The S6 ``parse_maxquant_peptides`` filtered intensities with ``if v``
+    (dropping 0.0 reporters before the sum) and coerced ``MS/MS Count`` with
+    ``int(... or 0) or None`` (0 -> None). Both flags together reproduce the
+    S6 studies byte-for-byte (freeze parity); defaults keep S1 semantics.
+    """
+
+    FIXTURE = (
+        "Sequence\tProteins\tLeading razor protein\tReverse\tPotential contaminant\tMS/MS Count\t"
+        "Reporter intensity corrected 1\tReporter intensity corrected 2\n"
+        "ALPAPIEK\tP02768\tP02768\t\t\t0\t1000.0\t0.0\n"  # zero count, one zero reporter
+        "KPYEEELK\tP02768\tP02768\t\t\t3\t500.0\t0.0\n"  # normal count, one zero reporter
+        "GNLNEQVFLK\tP02768\tP02768\t\t\t\t0.0\t0.0\n"  # missing count, all-zero reporters
+    )
+
+    def _run(self, tmp_path, **flags):
+        f = write(tmp_path / "PXDTEST/peptides.txt", self.FIXTURE)
+        cfg = make_config("maxquant_peptides", files=[{"name": f.name}], **flags)
+        return get_parser("maxquant_peptides")(cfg, [f])[0]
+
+    def test_s1_defaults_keep_zeros_and_zero_count(self, tmp_path):
+        rows = self._run(tmp_path)
+        assert [r["psm_count"] for r in rows] == [0, 3, None]
+        assert [r["peptide_intensity"] for r in rows] == [1000.0, 500.0, 0.0]
+
+    def test_s6_flags_drop_zeros_and_null_zero_count(self, tmp_path):
+        rows = self._run(tmp_path, drop_zero_intensities=True, psm_count_zero_as_none=True)
+        assert [r["psm_count"] for r in rows] == [None, 3, None]
+        assert [r["peptide_intensity"] for r in rows] == [1000.0, 500.0, None]
+
+    def test_flags_serialize_through_cohort_yaml(self, tmp_path):
+        cfg = make_config(
+            "maxquant_peptides",
+            files=[{"name": "peptides.txt"}],
+            drop_zero_intensities=True,
+            psm_count_zero_as_none=True,
+        )
+        out = tmp_path / "cohort.yaml"
+        study.dump_studies([cfg], out)
+        loaded = study.load_cohort(out)[0]
+        assert loaded.drop_zero_intensities is True
+        assert loaded.psm_count_zero_as_none is True

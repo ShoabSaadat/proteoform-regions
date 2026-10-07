@@ -71,6 +71,15 @@ class StudyConfig:
     #: ``protein_name_raw``. The S1 pilot parsers did; the S6 extension parsers
     #: did not (frozen rows carry empty names there). Default True (S1).
     extract_protein_names: bool = True
+    #: MaxQuant peptides adapter, S6 extension-tranche quirk pair. The S6
+    #: ``parse_maxquant_peptides`` filtered intensity values with ``if v``
+    #: (dropping exact 0.0 reporters BEFORE the sum, so all-zero rows carry no
+    #: intensity) and coerced ``MS/MS Count`` with ``int(... or 0) or None``
+    #: (0 becomes None). The S1 pilots kept zeros and kept 0. Both flags
+    #: default to the S1 (pilot) semantics; set both True to reproduce the
+    #: S6 extension studies byte-for-byte (see scripts/parity_vs_paper_freeze.py).
+    drop_zero_intensities: bool = False
+    psm_count_zero_as_none: bool = False
 
     def __post_init__(self) -> None:
         self.files = [FileSpec.from_dict(f) for f in self.files]
