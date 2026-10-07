@@ -30,3 +30,4 @@ site/
 
 # notebook execution output (generated at run time)
 walkthrough_run/
+.cache/
